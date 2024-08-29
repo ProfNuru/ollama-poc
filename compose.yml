@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ~/ollama:/root/.ollama
+      - ~/ollama/llm_data:/root/.ollama/llm_data
+    restart: unless-stopped
+    extra_hosts:
+      # On Windows, host is accessed with "host.docker.internal"
+      - "host.docker.internal:host-gateway"
+    networks:
+      ollama_net:
+        aliases:
+          - ollama
+
+  ts-db:
+    image: timescale/timescaledb-ha:pg16 # pgai only available for ha and pg16+
+    container_name: ts-db
+    ports:
+      - "5532:5432"
+    environment:
+      POSTGRES_USER: tsuser
+      POSTGRES_PASSWORD: tspassword
+      POSTGRES_DB: ts-db
+      POSTGRES_MAX_WAL_SIZE: 2GB
+      POSTGRES_CHECKPOINT_TIMEOUT: 15min
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      # On Windows, OLLAMA_HOST is set to "http://host.docker.internal:11434"
+      OLLAMA_HOST: http://host.docker.internal:host-gateway:11434
+    volumes:
+      - ~/timescale_data:/var/lib/postgresql/data
+
+volumes:
+  timescale_data:
+  ollama:
+networks:
+  ollama_net:
+    driver: bridge
